@@ -164,6 +164,13 @@ class Puppet::Parser::Resource < Puppet::Resource
     to_s
   end
 
+  # Define hash elements as parameters
+  def set_parameters(params_hash)
+    params_hash.each do |param,value|
+      self.set_parameter(param,value)
+    end
+  end
+
   # Define a parameter in our resource.
   # if we ever receive a parameter named 'tag', set
   # the resource tags with its value.
