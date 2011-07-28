@@ -32,17 +32,28 @@ class Resource < AST::Branch
       resource_titles = instance.title.safeevaluate(scope)
 
       # it's easier to always use an array, even for only one name
-      resource_titles = [resource_titles] unless resource_titles.is_a?(Array)
+      resource_titles = [resource_titles] unless resource_titles.is_a?(Array) || resource_titles.is_a?(Hash)
 
       fully_qualified_type, resource_titles = scope.resolve_type_and_titles(type, resource_titles)
+
+      if resource_titles.is_a?(Hash)
+        Puppet.debug "Creating #{fully_qualified_type} resources from Hash #{resource_titles.inspect}"
+      else
+        resource_titles.flatten!
+      end
 
       # Second level of implicit iteration; build a resource for each
       # title.  This handles things like:
       # file { ['/foo', '/bar']: owner => blah }
-      resource_titles.flatten.collect { |resource_title|
+      resource_titles.collect { |resource_title|
+        if resource_title.is_a?(Array)
+          title=resource_title[0]
+        else
+          title=resource_title
+        end
         exceptwrap :type => Puppet::ParseError do
           resource = Puppet::Parser::Resource.new(
-            fully_qualified_type, resource_title,
+            fully_qualified_type, title,
             :parameters => paramobjects,
             :file => self.file,
             :line => self.line,
@@ -53,11 +64,17 @@ class Resource < AST::Branch
             :strict => true
           )
 
+          if resource_title.is_a?(Array)
+            Puppet.debug "resource_title = #{title}"
+            Puppet.debug "parameters = #{resource_title[1].inspect}"
+            resource.set_parameters(resource_title[1])
+          end
+
           if resource.resource_type.is_a? Puppet::Resource::Type
             resource.resource_type.instantiate_resource(scope, resource)
           end
           scope.compiler.add_resource(scope, resource)
-          scope.compiler.evaluate_classes([resource_title],scope,false) if fully_qualified_type == 'class'
+          scope.compiler.evaluate_classes([title],scope,false) if fully_qualified_type == 'class'
           resource
         end
       }

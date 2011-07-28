@@ -438,7 +438,7 @@ class Puppet::Parser::Scope
   end
 
   def resolve_type_and_titles(type, titles)
-    raise ArgumentError, "titles must be an array" unless titles.is_a?(Array)
+    raise ArgumentError, "titles must be an array" unless titles.is_a?(Array) or titles.is_a?(Hash)
 
     case type.downcase
     when "class"
